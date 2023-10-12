@@ -45,10 +45,9 @@ func (e *initCommand) Run(ctx context.Context, c *simplecobra.Commandeer, s []st
 	case "json":
 		return commander.PrintExampleJSON(c.CobraCommand.OutOrStdout())
 	case "yaml":
-		fallthrough
+		return commander.PrintExampleYAML(c.CobraCommand.OutOrStdout())
 	case "toml":
-		slog.Warn("not implemented yet")
-		return nil
+		return commander.PrintExampleTOML(c.CobraCommand.OutOrStdout())
 	}
 	return errors.New("unsupported filetype")
 }
