@@ -1,0 +1,17 @@
+version: '3'
+services:
+  docs:
+    build:
+      context: ./docs
+      dockerfile_inline: |
+        FROM rust:latest
+        WORKDIR /book
+        EXPOSE 3000
+        RUN cargo install mdbook
+    ports:
+      - 3000:3000
+    volumes:
+      - ./docs:/book
+    command:
+      - mdbook serve
+  
