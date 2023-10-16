@@ -9,9 +9,11 @@ services:
         EXPOSE 3000
         RUN cargo install mdbook
     ports:
-      - 3000:3000
+      - "3000:3000"
     volumes:
       - ./docs:/book
     command:
-      - mdbook serve
+      - "mdbook"
+      - "serve"
+      - "-n 0.0.0.0"
   
