@@ -4,6 +4,7 @@
 package commander
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -43,14 +44,51 @@ func ParsePrint(w io.Writer, template string, values map[string]string) error {
 	return cmd.Print(w)
 }
 
+type FileExt string
+
+const (
+	ExtJSON  FileExt = "json"
+	ExtYAML          = "yaml"
+	ExtTOML          = "toml"
+	ExtOther         = ""
+)
+
 // ParsePrintFrom decodes the sorce config and parses only the target command by name
-func ParsePrintFrom(srcConfig io.Reader, dest io.Writer, targetCmd string) error {
+func ParsePrintFrom(extType FileExt, srcConfig io.Reader, dest io.Writer, targetCmd string) error {
+
+	buf := new(bytes.Buffer)
 	config := make(CommandMap, 0)
-	err := json.NewDecoder(srcConfig).Decode(&config)
-	if err != nil {
+	var readerErr error
+
+	switch extType {
+	case ExtJSON:
+		slog.Debug("read json")
+		_, err := buf.ReadFrom(srcConfig)
+		readerErr = err
+	case ExtYAML:
+		slog.Debug("decode yaml")
+		obj, err := convert.YAML{}.Decode(srcConfig)
+		readerErr = err
+		convert.JSON{}.Encode(buf, obj)
+
+	case ExtTOML:
+		slog.Debug("decode toml")
+		obj, err := convert.TOML{}.Decode(srcConfig)
+		readerErr = err
+		convert.JSON{}.Encode(buf, obj)
+	case ExtOther:
+		return errors.New("file extension is not JSON/YAML/TOML")
+	}
+	if readerErr != nil {
+		slog.Error("there's a problem with the input reader", "err", readerErr, "ext_type", extType)
+		return readerErr
+	}
+
+	if err := json.NewDecoder(buf).Decode(&config); err != nil {
 		slog.Error("failed decoding", "err", err)
 		return err
 	}
+
 	cmd, ok := config[targetCmd]
 	if !ok {
 		slog.Error("target command not found", "target", targetCmd)

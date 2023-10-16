@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/bep/simplecobra"
 	"github.com/gatecheckdev/guardian/pkg/commander"
@@ -16,6 +17,7 @@ type execCommand struct {
 	values     map[string]string
 	template   string
 	configFile *os.File
+	fileExt    commander.FileExt
 	target     string
 }
 
@@ -55,14 +57,28 @@ func (e *execCommand) PreRun(c *simplecobra.Commandeer, c1 *simplecobra.Commande
 	e.target = targetFlag
 
 	fileFlag, _ := c.CobraCommand.Flags().GetString("file")
-	if fileFlag == "" {
+
+	// Skip file loading if the template flag was used
+	if e.template != "" {
 		return nil
 	}
+
 	slog.Debug("open config file", "filename", fileFlag)
 	f, err := os.Open(fileFlag)
 	if err != nil {
 		slog.Error("failed to open config file", "filename", fileFlag)
 		return err
+	}
+
+	switch filepath.Ext(fileFlag) {
+	case ".json":
+		e.fileExt = commander.ExtJSON
+	case ".yaml", ".yml":
+		e.fileExt = commander.ExtYAML
+	case ".toml":
+		e.fileExt = commander.ExtTOML
+	default:
+		e.fileExt = commander.ExtOther
 	}
 
 	e.configFile = f
@@ -71,11 +87,10 @@ func (e *execCommand) PreRun(c *simplecobra.Commandeer, c1 *simplecobra.Commande
 
 func (e *execCommand) Run(ctx context.Context, c *simplecobra.Commandeer, s []string) error {
 	e.log.Debug("", "values", e.values, "template", e.template, "target", e.target, "config_file", e.configFile)
-	commander.ParsePrint(c.CobraCommand.OutOrStdout(), e.template, e.values)
 
 	switch {
 	case e.dryRun && e.configFile != nil:
-		return commander.ParsePrintFrom(e.configFile, c.CobraCommand.OutOrStdout(), e.target)
+		return commander.ParsePrintFrom(e.fileExt, e.configFile, c.CobraCommand.OutOrStdout(), e.target)
 	case e.dryRun && e.template != "":
 		return commander.ParsePrint(c.CobraCommand.OutOrStdout(), e.template, e.values)
 	case !e.dryRun:
