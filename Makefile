@@ -32,6 +32,10 @@ install_deps:
 	$(info ******************** downloading dependencies ********************)
 	go get -v ./...
 
+serve_docs:
+	cd docs && mdbook serve
+	
+
 # Make sure to have GITHUB_TOKEN env variable defined
 release_snapshot:
 	goreleaser release --snapshot --clean
